@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorting Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Pro Theme - Zinc/Neutral Aesthetic */
+        :root {
+            --bg-app: #09090b; /* Zinc 950 */
+            --bg-panel: #18181b; /* Zinc 900 */
+            --border-color: #27272a; /* Zinc 800 */
+            --text-main: #e4e4e7; /* Zinc 200 */
+            --text-muted: #a1a1aa; /* Zinc 400 */
+            --primary: #6366f1; /* Indigo 500 */
+        }
+
+        body {
+            background-color: var(--bg-app);
+            color: var(--text-main);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        /* --- Intro Overlay --- */
+        #intro-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background-color: var(--bg-app);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease-in-out, visibility 0.8s;
+        }
+        .hacker-text { font-family: 'Courier New', Courier, monospace; letter-spacing: -0.05em; }
+        .intro-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+        /* --- Layout --- */
+        .bars-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+            padding: 1rem 0.5rem; 
+            gap: 2px;
+        }
+
+        .bar {
+            width: 100%;
+            border-radius: 2px 2px 0 0;
+            transition: height 0.1s ease, background-color 0.1s ease;
+        }
+
+        /* Tabs */
+        .tab-btn {
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            border-bottom-color: var(--primary);
+            color: white;
+        }
+
+        /* Inputs */
+        .custom-input {
+            background: #27272a; border: 1px solid #3f3f46; color: white;
+            padding: 0.25rem 0.5rem; border-radius: 0.375rem; font-size: 0.875rem; outline: none;
+        }
+        .custom-input:focus { border-color: var(--primary); }
+
+        /* Range Slider */
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%;
+            background: var(--text-main); cursor: pointer; margin-top: -5px; border: 2px solid var(--bg-panel);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer; background: #3f3f46; border-radius: 2px;
+        }
+
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+            padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; font-size: 0.875rem; transition: all 0.2s; cursor: pointer;
+        }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-danger { background-color: #ef4444; color: white; }
+        .btn-secondary { background-color: #27272a; color: var(--text-main); border: 1px solid #3f3f46; }
+
+        .disabled-state { opacity: 0.5; pointer-events: none; filter: grayscale(1); }
+        
+        /* Theory Styles */
+        .theory-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .code-block {
+            background: #000;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #a5b4fc;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- INTRO OVERLAY -->
+    <div id="intro-overlay">
+        <div class="text-center">
+            <h1 id="intro-title" class="hacker-text text-5xl md:text-7xl font-black text-white mb-4" data-value="SORT VISUALIZER">SORT VISUALIZER</h1>
+            <p class="text-zinc-500 font-mono text-sm mb-8">Algorithms visualized. Concepts mastered.</p>
+            <button onclick="enterApp()" class="px-8 py-3 bg-white text-black font-bold rounded hover:scale-105 transition-transform text-sm tracking-widest">ENTER SYSTEM</button>
+        </div>
+        <div class="absolute bottom-10 text-center">
+            <p class="text-zinc-600 text-xs font-mono uppercase tracking-widest">Built by</p>
+            <p class="text-indigo-500 font-bold tracking-wide">Janak Kabra</p>
+        </div>
+    </div>
+
+    <!-- MAIN HEADER -->
+    <header class="bg-[#18181b] border-b border-[#27272a] z-20 shrink-0">
+        <div class="max-w-[1600px] mx-auto px-4 pt-4 pb-0">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-3 select-none">
+                    <div class="bg-indigo-500/10 text-indigo-400 p-2 rounded-lg border border-indigo-500/20">
+                        <i class="fa-solid fa-layer-group text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-semibold tracking-tight text-white leading-tight">Sorting Visualizer</h1>
+                        <p class="text-[10px] text-zinc-500 font-mono uppercase tracking-wider" id="global-status">Ready</p>
+                    </div>
+                </div>
+
+                <!-- Global Config (Speed/Size) -->
+                <div class="flex gap-6 items-center bg-[#27272a]/30 px-4 py-2 rounded-lg border border-[#27272a]">
+                    <div class="flex flex-col w-24">
+                        <label class="text-[10px] uppercase text-zinc-500 font-bold flex justify-between">
+                            Size <span id="size-val" class="text-indigo-400">50</span>
+                        </label>
+                        <input type="range" id="array-size" min="5" max="100" value="50" oninput="handleGlobalSizeChange()">
+                    </div>
+                    <div class="flex flex-col w-24">
+                        <label class="text-[10px] uppercase text-zinc-500 font-bold flex justify-between">
+                            Speed <span id="speed-val" class="text-indigo-400">Fast</span>
+                        </label>
+                        <input type="range" id="speed" min="1" max="100" value="85" oninput="updateSpeedLabel()">
+                    </div>
+                     <button onclick="toggleSound()" id="btn-sound" class="text-zinc-400 hover:text-white transition" title="Toggle Sound">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- TABS -->
+            <nav class="flex gap-6 text-sm font-medium">
+                <button onclick="switchTab('visualizer')" id="tab-visualizer-btn" class="tab-btn active pb-3 px-2">Visualizer</button>
+                <button onclick="switchTab('race')" id="tab-race-btn" class="tab-btn pb-3 px-2"><i class="fa-solid fa-flag-checkered mr-2"></i>Race Mode</button>
+                <button onclick="switchTab('theory')" id="tab-theory-btn" class="tab-btn pb-3 px-2"><i class="fa-solid fa-book-open mr-2"></i>Theory</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- VIEWS CONTAINER -->
+    <main class="flex-grow relative bg-[#09090b] overflow-hidden">
+        
+        <!-- === VIEW 1: STANDARD VISUALIZER === -->
+        <div id="view-visualizer" class="view-section w-full h-full flex flex-col">
+            <!-- Controls Toolbar -->
+            <div class="bg-[#18181b] border-b border-[#27272a] p-3 flex flex-wrap gap-4 items-center justify-between z-10">
+                <div class="flex gap-4 items-center">
+                    <select id="std-algo-select" onchange="updateStdInfo()" class="custom-input bg-[#27272a] cursor-pointer">
+                        <option value="bubble">Bubble Sort</option>
+                        <option value="selection">Selection Sort</option>
+                        <option value="insertion">Insertion Sort</option>
+                        <option value="merge">Merge Sort</option>
+                        <option value="quick">Quick Sort</option>
+                        <option value="heap">Heap Sort</option>
+                        <option value="cocktail">Cocktail Shaker</option>
+                        <option value="shell">Shell Sort</option>
+                    </select>
+                    
+                    <!-- Custom Array Input -->
+                    <div class="flex gap-2">
+                        <input type="text" id="custom-input" placeholder="Custom Array (e.g. 10,50,20)" class="custom-input w-40 text-xs">
+                        <button onclick="parseCustomArray()" class="btn btn-secondary py-1 px-3 text-xs">Load</button>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button onclick="initStandardMode()" class="btn btn-secondary" title="New Random Array"><i class="fa-solid fa-shuffle"></i></button>
+                    <button onclick="runStandardSort()" id="btn-std-start" class="btn btn-primary"><i class="fa-solid fa-play"></i> Sort</button>
+                    <button onclick="stopAll()" id="btn-std-stop" class="btn btn-danger hidden"><i class="fa-solid fa-stop"></i> Stop</button>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="bg-[#09090b] py-1 px-4 border-b border-[#27272a] flex justify-between text-[10px] text-zinc-500 font-mono">
+                <span id="std-complexity" class="text-indigo-400 font-bold">Time: O(n²)</span>
+                <div class="flex gap-4">
+                    <span id="std-comp">Comp: 0</span>
+                    <span id="std-swap">Swap: 0</span>
+                </div>
+            </div>
+
+            <!-- Canvas -->
+            <div id="std-container" class="bars-container flex-grow"></div>
+        </div>
+
+        <!-- === VIEW 2: RACE MODE === -->
+        <div id="view-race" class="view-section w-full h-full flex flex-col hidden">
+            <!-- Race Controls -->
+            <div class="bg-[#18181b] border-b border-[#27272a] p-3 flex flex-wrap gap-4 items-center justify-between z-10 relative">
+                
+                <!-- Race Info Tooltip Trigger -->
+                <div class="group relative flex items-center">
+                    <div class="bg-indigo-500/20 text-indigo-400 text-xs px-2 py-1 rounded cursor-help border border-indigo-500/30">
+                        <i class="fa-solid fa-circle-info mr-1"></i> What is this?
+                    </div>
+                    <!-- Tooltip -->
+                    <div class="absolute top-full left-0 mt-2 w-72 bg-[#18181b] border border-zinc-700 p-3 rounded shadow-xl text-xs text-zinc-300 hidden group-hover:block z-50">
+                        <p class="font-bold text-white mb-1">Algorithm Race Mode</p>
+                        <p>Compare two algorithms side-by-side on the <strong>exact same dataset</strong>.</p>
+                        <ul class="list-disc pl-4 mt-2 space-y-1 text-zinc-400">
+                            <li>Visualizes efficiency differences.</li>
+                            <li>Shows real-time comparison counts.</li>
+                            <li>Great for O(n²) vs O(n log n) battles.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 items-center justify-center flex-grow">
+                    <div class="flex flex-col items-start">
+                        <label class="text-[10px] uppercase text-zinc-500 font-bold">Contender 1</label>
+                        <select id="race-algo-1" class="custom-input bg-[#27272a] text-xs w-32">
+                            <option value="bubble">Bubble Sort</option>
+                            <option value="selection">Selection Sort</option>
+                            <option value="insertion">Insertion Sort</option>
+                        </select>
+                    </div>
+                    
+                    <span class="text-zinc-600 font-bold text-lg">VS</span>
+
+                    <div class="flex flex-col items-start">
+                        <label class="text-[10px] uppercase text-zinc-500 font-bold">Contender 2</label>
+                        <select id="race-algo-2" class="custom-input bg-[#27272a] text-xs w-32">
+                            <option value="quick" selected>Quick Sort</option>
+                            <option value="merge">Merge Sort</option>
+                            <option value="heap">Heap Sort</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button onclick="initRaceMode()" class="btn btn-secondary" title="New Random Arrays"><i class="fa-solid fa-shuffle"></i></button>
+                    <button onclick="runRace()" id="btn-race-start" class="btn btn-primary"><i class="fa-solid fa-flag-checkered"></i> Start Race</button>
+                    <button onclick="stopAll()" id="btn-race-stop" class="btn btn-danger hidden"><i class="fa-solid fa-stop"></i> Stop</button>
+                </div>
+            </div>
+
+            <!-- Race Grid -->
+            <div class="flex-grow flex flex-col md:flex-row h-full overflow-hidden">
+                <!-- Left Contender -->
+                <div class="flex-1 flex flex-col border-r border-[#27272a] relative">
+                    <div class="absolute top-2 left-2 z-10 bg-black/50 px-2 py-1 rounded text-[10px] font-mono border border-zinc-800 backdrop-blur-sm">
+                        <span id="race-stats-1" class="text-zinc-300">C: 0 | S: 0</span>
+                    </div>
+                    <div id="race-container-1" class="bars-container flex-grow"></div>
+                </div>
+                <!-- Right Contender -->
+                <div class="flex-1 flex flex-col relative">
+                    <div class="absolute top-2 left-2 z-10 bg-black/50 px-2 py-1 rounded text-[10px] font-mono border border-zinc-800 backdrop-blur-sm">
+                        <span id="race-stats-2" class="text-zinc-300">C: 0 | S: 0</span>
+                    </div>
+                    <div id="race-container-2" class="bars-container flex-grow"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- === VIEW 3: THEORY === -->
+        <div id="view-theory" class="view-section w-full h-full overflow-y-auto p-4 hidden md:p-8">
+            <div class="max-w-4xl mx-auto space-y-6 pb-12">
+                <h2 class="text-3xl font-bold text-white mb-6">Sorting Algorithms Theory</h2>
+                
+                <div class="theory-card">
+                    <h3 class="text-xl font-bold text-indigo-400 mb-2">Bubble Sort</h3>
+                    <p class="text-sm text-zinc-400 mb-4">A simple sorting algorithm that repeatedly steps through the list, compares adjacent elements and swaps them if they are in the wrong order. The pass through the list is repeated until the list is sorted.</p>
+                    <div class="grid grid-cols-2 gap-4 text-xs font-mono">
+                        <div>
+                            <span class="text-zinc-500">Best Case:</span> <span class="text-emerald-400">O(n)</span>
+                        </div>
+                        <div>
+                            <span class="text-zinc-500">Average/Worst:</span> <span class="text-red-400">O(n²)</span>
+                        </div>
+                    </div>
+                    <div class="code-block">for i from 0 to n-1: <br>&nbsp;&nbsp;for j from 0 to n-i-1: <br>&nbsp;&nbsp;&nbsp;&nbsp;if array[j] > array[j+1]: swap()</div>
+                </div>
+
+                <div class="theory-card">
+                    <h3 class="text-xl font-bold text-indigo-400 mb-2">Selection Sort</h3>
+                    <p class="text-sm text-zinc-400 mb-4">The algorithm divides the input list into two parts: a sorted sublist of items which is built up from left to right, and a sublist of the remaining unsorted items. It repeatedly selects the smallest element from the unsorted sublist.</p>
+                    <div class="grid grid-cols-2 gap-4 text-xs font-mono">
+                        <div><span class="text-zinc-500">Complexity:</span> <span class="text-red-400">O(n²)</span> (Always)</div>
+                    </div>
+                </div>
+
+                <div class="theory-card">
+                    <h3 class="text-xl font-bold text-indigo-400 mb-2">Insertion Sort</h3>
+                    <p class="text-sm text-zinc-400 mb-4">Builds the final sorted array one item at a time. It is much less efficient on large lists than more advanced algorithms such as quicksort, heapsort, or merge sort. Efficient for small data sets.</p>
+                    <div class="grid grid-cols-2 gap-4 text-xs font-mono">
+                         <div><span class="text-zinc-500">Best Case:</span> <span class="text-emerald-400">O(n)</span></div>
+                         <div><span class="text-zinc-500">Worst Case:</span> <span class="text-red-400">O(n²)</span></div>
+                    </div>
+                </div>
+
+                <div class="theory-card">
+                    <h3 class="text-xl font-bold text-indigo-400 mb-2">Merge Sort</h3>
+                    <p class="text-sm text-zinc-400 mb-4">A divide-and-conquer algorithm. It divides the input array into two halves, calls itself for the two halves, and then merges the two sorted halves.</p>
+                    <div class="grid grid-cols-2 gap-4 text-xs font-mono">
+                         <div><span class="text-zinc-500">Complexity:</span> <span class="text-emerald-400">O(n log n)</span></div>
+                    </div>
+                    <div class="code-block">Stable Sort: Yes <br>Space Complexity: O(n)</div>
+                </div>
+
+                <div class="theory-card">
+                    <h3 class="text-xl font-bold text-indigo-400 mb-2">Quick Sort</h3>
+                    <p class="text-sm text-zinc-400 mb-4">It picks an element as a pivot and partitions the given array around the picked pivot. There are many different versions of quickSort that pick pivot in different ways.</p>
+                    <div class="grid grid-cols-2 gap-4 text-xs font-mono">
+                         <div><span class="text-zinc-500">Average:</span> <span class="text-emerald-400">O(n log n)</span></div>
+                         <div><span class="text-zinc-500">Worst:</span> <span class="text-red-400">O(n²)</span></div>
+                    </div>
+                </div>
+
+                <div class="theory-card">
+                    <h3 class="text-xl font-bold text-indigo-400 mb-2">Heap Sort</h3>
+                    <p class="text-sm text-zinc-400 mb-4">Heap sort is a comparison-based sorting technique based on Binary Heap data structure. It is similar to selection sort where we first find the minimum element and place the minimum element at the beginning.</p>
+                     <div class="grid grid-cols-2 gap-4 text-xs font-mono">
+                         <div><span class="text-zinc-500">Complexity:</span> <span class="text-emerald-400">O(n log n)</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+    
+    <!-- Footer Credit -->
+    <footer class="absolute bottom-1 right-3 text-[10px] text-zinc-700 font-mono pointer-events-none z-50">
+        Made by <span class="text-indigo-900 font-bold">Janak Kabra</span>
+    </footer>
+
+    <script>
+        // --- Intro & Global ---
+        const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        let activeTab = 'visualizer';
+        let abort = false;
+        let isRunning = false;
+        
+        // Sound
+        let audioCtx = null;
+        let soundEnabled = false;
+
+        // Contexts for multiple visualizers
+        class SortContext {
+            constructor(containerId, statsId) {
+                this.container = document.getElementById(containerId);
+                this.statsEl = document.getElementById(statsId);
+                this.array = [];
+                this.bars = [];
+                this.comparisons = 0;
+                this.swaps = 0;
+            }
+
+            resetStats() {
+                this.comparisons = 0;
+                this.swaps = 0;
+                this.updateStatsDisplay();
+            }
+
+            updateStatsDisplay() {
+                if(this.statsEl) {
+                    if(this.statsEl.id.includes('race')) {
+                        this.statsEl.innerText = `C: ${this.comparisons} | S: ${this.swaps}`;
+                    } else {
+                        document.getElementById('std-comp').innerText = `Comp: ${this.comparisons}`;
+                        document.getElementById('std-swap').innerText = `Swap: ${this.swaps}`;
+                    }
+                }
+            }
+        }
+
+        const stdCtx = new SortContext('std-container', 'std-comp'); // second ID is just one of the spans
+        const raceCtx1 = new SortContext('race-container-1', 'race-stats-1');
+        const raceCtx2 = new SortContext('race-container-2', 'race-stats-2');
+
+        // --- Init ---
+        window.onload = () => {
+            const title = document.getElementById('intro-title');
+            runHackerEffect(title);
+            initStandardMode();
+            updateSpeedLabel();
+        };
+
+        function runHackerEffect(element) {
+            let iteration = 0;
+            const originalText = element.dataset.value;
+            let interval = setInterval(() => {
+                element.innerText = originalText.split("").map((l, i) => {
+                    if(i < iteration) return originalText[i];
+                    return letters[Math.floor(Math.random() * 36)]
+                }).join("");
+                if(iteration >= originalText.length) clearInterval(interval);
+                iteration += 1 / 3;
+            }, 30);
+        }
+
+        function enterApp() {
+            document.getElementById('intro-overlay').classList.add('intro-hidden');
+            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        // --- Audio ---
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('btn-sound');
+            if(soundEnabled) {
+                btn.classList.add('text-indigo-400');
+                if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            } else {
+                btn.classList.remove('text-indigo-400');
+            }
+        }
+
+        function playNote(val) {
+            if(!soundEnabled || !audioCtx) return;
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.type = 'sine';
+            // Map 0-100 value to 200Hz - 800Hz
+            oscillator.frequency.value = 200 + (val * 6);
+            gainNode.gain.value = 0.05;
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.05);
+        }
+
+        // --- Tabs ---
+        function switchTab(tab) {
+            if(isRunning) { alert("Please stop sorting before switching tabs."); return; }
+            activeTab = tab;
+            
+            // UI Toggles
+            ['visualizer', 'race', 'theory'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}-btn`).classList.remove('active');
+            });
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}-btn`).classList.add('active');
+
+            if(tab === 'race') initRaceMode();
+            if(tab === 'visualizer') initStandardMode();
+        }
+
+        // --- Inputs ---
+        function handleGlobalSizeChange() {
+            document.getElementById("size-val").innerText = document.getElementById("array-size").value;
+            if(activeTab === 'visualizer') initStandardMode();
+            if(activeTab === 'race') initRaceMode();
+        }
+
+        function updateSpeedLabel() {
+            const val = parseInt(document.getElementById("speed").value);
+            let label = val < 30 ? "Slow" : val > 80 ? "Turbo" : "Fast";
+            document.getElementById("speed-val").innerText = label;
+        }
+
+        function getDelay() {
+            const speed = parseInt(document.getElementById("speed").value);
+            // Non-linear curve
+            return Math.floor(Math.pow(10, (100 - speed) / 25)); 
+        }
+
+        function sleep() {
+            return new Promise((resolve, reject) => {
+                if (abort) return reject("ABORT");
+                setTimeout(() => {
+                    if (abort) reject("ABORT");
+                    else resolve();
+                }, getDelay());
+            });
+        }
+
+        // --- Rendering Logic (Generic) ---
+        function generateArrayData(size) {
+            const arr = [];
+            for(let i=0; i<size; i++) arr.push(Math.floor(Math.random() * 95) + 5);
+            return arr;
+        }
+
+        function renderContext(ctx, dataArray) {
+            ctx.array = [...dataArray];
+            ctx.container.innerHTML = "";
+            ctx.bars = [];
+            ctx.resetStats();
+
+            const maxVal = Math.max(...ctx.array);
+
+            ctx.array.forEach(val => {
+                const bar = document.createElement("div");
+                bar.classList.add("bar");
+                bar.style.height = `${Math.max((val/maxVal)*100, 2)}%`;
+                bar.style.backgroundColor = "#6366f1"; // Default Indigo
+                bar.setAttribute('data-value', val);
+                ctx.container.appendChild(bar);
+                ctx.bars.push(bar);
+            });
+        }
+
+        // --- Standard Mode Logic ---
+        function initStandardMode() {
+            if(isRunning) return;
+            const size = parseInt(document.getElementById("array-size").value);
+            renderContext(stdCtx, generateArrayData(size));
+            document.getElementById('global-status').innerText = "Visualizer Ready";
+        }
+
+        function parseCustomArray() {
+            const raw = document.getElementById("custom-input").value;
+            if (!raw) return;
+            const values = raw.split(/[\s,]+/).map(v => parseInt(v.trim())).filter(v => !isNaN(v));
+            if (values.length < 2) return alert("Enter at least 2 numbers");
+            renderContext(stdCtx, values);
+        }
+
+        async function runStandardSort() {
+            if(isRunning) return;
+            startRunUI('std');
+            const algo = document.getElementById("std-algo-select").value;
+            
+            try {
+                await runAlgo(algo, stdCtx);
+                await markSorted(stdCtx);
+            } catch(e) {
+                console.log(e);
+            } finally {
+                stopRunUI('std');
+            }
+        }
+
+        function updateStdInfo() {
+            const algo = document.getElementById("std-algo-select").value;
+            const map = { 'bubble':'O(n²)', 'selection':'O(n²)', 'insertion':'O(n²)', 'merge':'O(n log n)', 'quick':'O(n log n)', 'heap':'O(n log n)', 'cocktail':'O(n²)', 'shell':'O(n log² n)' };
+            document.getElementById('std-complexity').innerText = `Time: ${map[algo]}`;
+        }
+
+        // --- Race Mode Logic ---
+        function initRaceMode() {
+            if(isRunning) return;
+            const size = parseInt(document.getElementById("array-size").value);
+            // Crucial: Use SAME data for both
+            const data = generateArrayData(size);
+            renderContext(raceCtx1, data);
+            renderContext(raceCtx2, data);
+            document.getElementById('global-status').innerText = "Race Mode Ready";
+        }
+
+        async function runRace() {
+            if(isRunning) return;
+            startRunUI('race');
+            
+            const algo1 = document.getElementById("race-algo-1").value;
+            const algo2 = document.getElementById("race-algo-2").value;
+
+            try {
+                // Run parallel
+                await Promise.all([
+                    runAlgo(algo1, raceCtx1).then(() => markSorted(raceCtx1)),
+                    runAlgo(algo2, raceCtx2).then(() => markSorted(raceCtx2))
+                ]);
+            } catch(e) {
+                console.log(e);
+            } finally {
+                stopRunUI('race');
+            }
+        }
+
+        // --- Common Control Flow ---
+        function startRunUI(mode) {
+            isRunning = true;
+            abort = false;
+            document.getElementById(`btn-${mode}-start`).classList.add('hidden');
+            document.getElementById(`btn-${mode}-stop`).classList.remove('hidden');
+            document.getElementById('global-status').innerText = "Sorting in Progress...";
+        }
+
+        function stopRunUI(mode) {
+            isRunning = false;
+            document.getElementById(`btn-${mode}-start`).classList.remove('hidden');
+            document.getElementById(`btn-${mode}-stop`).classList.add('hidden');
+            if(!abort) document.getElementById('global-status').innerText = "Finished";
+            else document.getElementById('global-status').innerText = "Stopped";
+        }
+
+        function stopAll() {
+            abort = true;
+        }
+
+        // --- Helper for Algo UI updates ---
+        function setBar(ctx, idx, color, heightVal = null) {
+            if(!ctx.bars[idx]) return;
+            ctx.bars[idx].style.backgroundColor = color;
+            if(heightVal !== null) {
+                const maxVal = Math.max(...ctx.array);
+                ctx.bars[idx].style.height = `${Math.max((heightVal/maxVal)*100, 2)}%`;
+            }
+        }
+
+        async function markSorted(ctx) {
+            for(let i=0; i<ctx.bars.length; i++) {
+                if(abort) return;
+                setBar(ctx, i, "#10b981"); // Emerald
+                playNote(ctx.array[i]);
+                await new Promise(r => setTimeout(r, 10));
+            }
+        }
+
+        // --- ALGORITHMS (Refactored to take Context) ---
+        
+        async function runAlgo(name, ctx) {
+            switch(name) {
+                case 'bubble': await bubbleSort(ctx); break;
+                case 'selection': await selectionSort(ctx); break;
+                case 'insertion': await insertionSort(ctx); break;
+                case 'merge': await mergeSort(ctx, 0, ctx.array.length - 1); break;
+                case 'quick': await quickSort(ctx, 0, ctx.array.length - 1); break;
+                case 'heap': await heapSort(ctx); break;
+                case 'cocktail': await cocktailSort(ctx); break;
+                case 'shell': await shellSort(ctx); break;
+            }
+        }
+
+        // 1. Bubble Sort
+        async function bubbleSort(ctx) {
+            const n = ctx.array.length;
+            for (let i = 0; i < n - 1; i++) {
+                for (let j = 0; j < n - i - 1; j++) {
+                    setBar(ctx, j, "#eab308"); setBar(ctx, j+1, "#eab308"); // Compare
+                    await sleep(); playNote(ctx.array[j]);
+                    ctx.comparisons++; ctx.updateStatsDisplay();
+
+                    if (ctx.array[j] > ctx.array[j + 1]) {
+                        ctx.swaps++; ctx.updateStatsDisplay();
+                        [ctx.array[j], ctx.array[j+1]] = [ctx.array[j+1], ctx.array[j]];
+                        setBar(ctx, j, "#ef4444", ctx.array[j]);
+                        setBar(ctx, j+1, "#ef4444", ctx.array[j+1]);
+                        await sleep();
+                    }
+                    setBar(ctx, j, "#6366f1"); setBar(ctx, j+1, "#6366f1");
+                }
+                setBar(ctx, n - 1 - i, "#10b981");
+            }
+            setBar(ctx, 0, "#10b981");
+        }
+
+        // 2. Selection Sort
+        async function selectionSort(ctx) {
+            const n = ctx.array.length;
+            for (let i = 0; i < n; i++) {
+                let minIdx = i;
+                setBar(ctx, i, "#ef4444");
+                for (let j = i + 1; j < n; j++) {
+                    setBar(ctx, j, "#eab308");
+                    await sleep(); playNote(ctx.array[j]);
+                    ctx.comparisons++; ctx.updateStatsDisplay();
+                    if (ctx.array[j] < ctx.array[minIdx]) {
+                        if (minIdx !== i) setBar(ctx, minIdx, "#6366f1");
+                        minIdx = j;
+                        setBar(ctx, minIdx, "#ef4444");
+                    } else {
+                        setBar(ctx, j, "#6366f1");
+                    }
+                }
+                if (minIdx !== i) {
+                    ctx.swaps++; ctx.updateStatsDisplay();
+                    [ctx.array[i], ctx.array[minIdx]] = [ctx.array[minIdx], ctx.array[i]];
+                    setBar(ctx, i, "#6366f1", ctx.array[i]);
+                    setBar(ctx, minIdx, "#6366f1", ctx.array[minIdx]);
+                    await sleep();
+                }
+                setBar(ctx, minIdx, "#6366f1");
+                setBar(ctx, i, "#10b981");
+            }
+        }
+
+        // 3. Insertion Sort
+        async function insertionSort(ctx) {
+            const n = ctx.array.length;
+            setBar(ctx, 0, "#10b981");
+            for (let i = 1; i < n; i++) {
+                let key = ctx.array[i];
+                let j = i - 1;
+                setBar(ctx, i, "#eab308");
+                await sleep();
+                while (j >= 0 && ctx.array[j] > key) {
+                    ctx.comparisons++; ctx.swaps++; ctx.updateStatsDisplay();
+                    setBar(ctx, j, "#eab308"); setBar(ctx, j+1, "#ef4444");
+                    ctx.array[j + 1] = ctx.array[j];
+                    setBar(ctx, j+1, "#6366f1", ctx.array[j+1]); // Reset color logic slightly simplified for race
+                    await sleep(); playNote(ctx.array[j+1]);
+                    setBar(ctx, j, "#10b981"); setBar(ctx, j+1, "#10b981");
+                    j--;
+                }
+                ctx.array[j + 1] = key;
+                setBar(ctx, j+1, "#10b981", key);
+                await sleep();
+            }
+        }
+
+        // 4. Merge Sort
+        async function mergeSort(ctx, l, r) {
+            if (l >= r) return;
+            const m = l + Math.floor((r - l) / 2);
+            await mergeSort(ctx, l, m);
+            await mergeSort(ctx, m + 1, r);
+            await merge(ctx, l, m, r);
+        }
+
+        async function merge(ctx, l, m, r) {
+            const n1 = m - l + 1;
+            const n2 = r - m;
+            let L = new Array(n1);
+            let R = new Array(n2);
+
+            for (let i = 0; i < n1; i++) { await sleep(); setBar(ctx, l+i, "#eab308"); L[i] = ctx.array[l + i]; }
+            for (let j = 0; j < n2; j++) { await sleep(); setBar(ctx, m+1+j, "#eab308"); R[j] = ctx.array[m + 1 + j]; }
+
+            let i = 0, j = 0, k = l;
+            while (i < n1 && j < n2) {
+                ctx.comparisons++; ctx.updateStatsDisplay();
+                await sleep(); playNote(ctx.array[k]);
+                setBar(ctx, k, "#ef4444");
+                if (L[i] <= R[j]) { ctx.array[k] = L[i]; i++; } 
+                else { ctx.array[k] = R[j]; j++; }
+                setBar(ctx, k, "#6366f1", ctx.array[k]);
+                await sleep();
+                setBar(ctx, k, "#10b981");
+                k++;
+            }
+            while (i < n1) {
+                await sleep(); setBar(ctx, k, "#ef4444");
+                ctx.array[k] = L[i];
+                setBar(ctx, k, "#6366f1", ctx.array[k]);
+                setBar(ctx, k, "#10b981");
+                i++; k++;
+            }
+            while (j < n2) {
+                await sleep(); setBar(ctx, k, "#ef4444");
+                ctx.array[k] = R[j];
+                setBar(ctx, k, "#6366f1", ctx.array[k]);
+                setBar(ctx, k, "#10b981");
+                j++; k++;
+            }
+        }
+
+        // 5. Quick Sort
+        async function quickSort(ctx, low, high) {
+            if (low < high) {
+                let pi = await partition(ctx, low, high);
+                await quickSort(ctx, low, pi - 1);
+                await quickSort(ctx, pi + 1, high);
+            } else if (low >= 0 && high >= 0 && low === high) {
+                setBar(ctx, low, "#10b981");
+            }
+        }
+
+        async function partition(ctx, low, high) {
+            let pivot = ctx.array[high];
+            setBar(ctx, high, "#ef4444"); 
+            let i = (low - 1);
+            for (let j = low; j <= high - 1; j++) {
+                setBar(ctx, j, "#eab308");
+                await sleep(); playNote(ctx.array[j]);
+                ctx.comparisons++; ctx.updateStatsDisplay();
+                if (ctx.array[j] < pivot) {
+                    i++;
+                    ctx.swaps++; ctx.updateStatsDisplay();
+                    [ctx.array[i], ctx.array[j]] = [ctx.array[j], ctx.array[i]];
+                    setBar(ctx, i, "#6366f1", ctx.array[i]);
+                    setBar(ctx, j, "#6366f1", ctx.array[j]);
+                    if (i !== j) {
+                        setBar(ctx, i, "#ef4444"); setBar(ctx, j, "#ef4444");
+                        await sleep();
+                    }
+                    setBar(ctx, i, "#6366f1");
+                }
+                setBar(ctx, j, "#6366f1");
+            }
+            ctx.swaps++; ctx.updateStatsDisplay();
+            [ctx.array[i+1], ctx.array[high]] = [ctx.array[high], ctx.array[i+1]];
+            setBar(ctx, i+1, "#6366f1", ctx.array[i+1]);
+            setBar(ctx, high, "#6366f1", ctx.array[high]);
+            await sleep();
+            setBar(ctx, high, "#6366f1");
+            setBar(ctx, i + 1, "#10b981");
+            return (i + 1);
+        }
+
+        // 6. Heap Sort
+        async function heapSort(ctx) {
+            let n = ctx.array.length;
+            for (let i = Math.floor(n / 2) - 1; i >= 0; i--) await heapify(ctx, n, i);
+            for (let i = n - 1; i > 0; i--) {
+                ctx.swaps++; ctx.updateStatsDisplay();
+                setBar(ctx, 0, "#ef4444"); setBar(ctx, i, "#ef4444");
+                await sleep(); playNote(ctx.array[0]);
+                [ctx.array[0], ctx.array[i]] = [ctx.array[i], ctx.array[0]];
+                setBar(ctx, 0, "#6366f1", ctx.array[0]);
+                setBar(ctx, i, "#6366f1", ctx.array[i]);
+                setBar(ctx, i, "#10b981");
+                setBar(ctx, 0, "#6366f1");
+                await heapify(ctx, i, 0);
+            }
+            setBar(ctx, 0, "#10b981");
+        }
+
+        async function heapify(ctx, n, i) {
+            let largest = i;
+            let l = 2 * i + 1;
+            let r = 2 * i + 2;
+
+            setBar(ctx, i, "#eab308");
+            if (l < n) setBar(ctx, l, "#eab308");
+            if (r < n) setBar(ctx, r, "#eab308");
+            await sleep();
+
+            if (l < n) {
+                ctx.comparisons++; ctx.updateStatsDisplay();
+                if (ctx.array[l] > ctx.array[largest]) largest = l;
+            }
+            if (r < n) {
+                ctx.comparisons++; ctx.updateStatsDisplay();
+                if (ctx.array[r] > ctx.array[largest]) largest = r;
+            }
+
+            setBar(ctx, i, "#6366f1");
+            if (l < n) setBar(ctx, l, "#6366f1");
+            if (r < n) setBar(ctx, r, "#6366f1");
+
+            if (largest !== i) {
+                ctx.swaps++; ctx.updateStatsDisplay();
+                [ctx.array[i], ctx.array[largest]] = [ctx.array[largest], ctx.array[i]];
+                setBar(ctx, i, "#ef4444", ctx.array[i]);
+                setBar(ctx, largest, "#ef4444", ctx.array[largest]);
+                await sleep();
+                setBar(ctx, i, "#6366f1");
+                setBar(ctx, largest, "#6366f1");
+                await heapify(ctx, n, largest);
+            }
+        }
+        
+        // 7. Cocktail Shaker Sort
+        async function cocktailSort(ctx) {
+            let n = ctx.array.length;
+            let swapped = true;
+            let start = 0;
+            let end = n - 1;
+
+            while (swapped) {
+                swapped = false;
+                for (let i = start; i < end; ++i) {
+                    setBar(ctx, i, "#eab308"); setBar(ctx, i+1, "#eab308");
+                    await sleep(); playNote(ctx.array[i]);
+                    ctx.comparisons++; ctx.updateStatsDisplay();
+                    if (ctx.array[i] > ctx.array[i + 1]) {
+                        ctx.swaps++; ctx.updateStatsDisplay();
+                        [ctx.array[i], ctx.array[i+1]] = [ctx.array[i+1], ctx.array[i]];
+                        setBar(ctx, i, "#ef4444", ctx.array[i]); setBar(ctx, i+1, "#ef4444", ctx.array[i+1]);
+                        swapped = true;
+                        await sleep();
+                    }
+                    setBar(ctx, i, "#6366f1"); setBar(ctx, i+1, "#6366f1");
+                }
+                if (!swapped) break;
+                setBar(ctx, end, "#10b981");
+                swapped = false;
+                end--;
+
+                for (let i = end - 1; i >= start; --i) {
+                    setBar(ctx, i, "#eab308"); setBar(ctx, i+1, "#eab308");
+                    await sleep(); playNote(ctx.array[i]);
+                    ctx.comparisons++; ctx.updateStatsDisplay();
+                    if (ctx.array[i] > ctx.array[i + 1]) {
+                        ctx.swaps++; ctx.updateStatsDisplay();
+                        [ctx.array[i], ctx.array[i+1]] = [ctx.array[i+1], ctx.array[i]];
+                        setBar(ctx, i, "#ef4444", ctx.array[i]); setBar(ctx, i+1, "#ef4444", ctx.array[i+1]);
+                        swapped = true;
+                        await sleep();
+                    }
+                    setBar(ctx, i, "#6366f1"); setBar(ctx, i+1, "#6366f1");
+                }
+                setBar(ctx, start, "#10b981");
+                start++;
+            }
+            // Mark remainder sorted
+             for(let i=0; i<n; i++) setBar(ctx, i, "#10b981");
+        }
+
+        // 8. Shell Sort
+        async function shellSort(ctx) {
+            let n = ctx.array.length;
+            for (let gap = Math.floor(n/2); gap > 0; gap = Math.floor(gap/2)) {
+                for (let i = gap; i < n; i += 1) {
+                    let temp = ctx.array[i];
+                    let j;
+                    setBar(ctx, i, "#eab308");
+                    await sleep(); playNote(ctx.array[i]);
+                    for (j = i; j >= gap && ctx.array[j - gap] > temp; j -= gap) {
+                        ctx.comparisons++; ctx.swaps++; ctx.updateStatsDisplay();
+                        setBar(ctx, j, "#ef4444"); setBar(ctx, j-gap, "#ef4444");
+                        ctx.array[j] = ctx.array[j - gap];
+                        setBar(ctx, j, "#6366f1", ctx.array[j]);
+                        await sleep();
+                        setBar(ctx, j, "#6366f1"); setBar(ctx, j-gap, "#6366f1");
+                    }
+                    if(j>=gap) { ctx.comparisons++; ctx.updateStatsDisplay(); }
+                    ctx.array[j] = temp;
+                    setBar(ctx, j, "#6366f1", temp);
+                }
+            }
+             for(let i=0; i<n; i++) setBar(ctx, i, "#10b981");
+        }
+
+    </script>
+</body>
+</html>
