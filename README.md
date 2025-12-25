@@ -9,8 +9,7 @@ This project visually demonstrates algorithm behavior, time complexity differenc
 ## 🚀 Live Demo
 After enabling GitHub Pages, the project will be available at:
 
-here 
-
+https://jenak26.github.io/Sorting-visualizer/ 
 
 ---
 
@@ -84,10 +83,10 @@ here
 
 ## 📂 Project Structure
 
-sorting-visualizer/
-│
-├── index.html
-└── README.md
+ sorting-visualizer/
+ │
+ ├── index.html
+ └── README.md
 
 ---
 
